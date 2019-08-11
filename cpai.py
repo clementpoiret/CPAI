@@ -18,13 +18,14 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 For any questions, contact me at poiret.clement[at]outlook[dot]fr"""
 
-# Here comes your imports
+# Import libraries
+import numpy as np
+import pandas as pd
+import utils.cryptocurrency.cryptocompare
 
-# Here comes your (few) global variables
+# Global variables
 
-# Here comes your class definitions
-
-# Here comes your function definitions
+# Functions
 
 
 def main():

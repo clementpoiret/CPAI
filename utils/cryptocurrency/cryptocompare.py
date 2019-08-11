@@ -46,6 +46,7 @@ def get_historical_data(fsym="ETH",
 
 
 def get_social_data(coin="ETH", limit=2000):
+    """TODO: SocialData & PricingData must have the same timestamps"""
     # BTC: 1182
     # ETH: 7605
     list = get_coinlist()
