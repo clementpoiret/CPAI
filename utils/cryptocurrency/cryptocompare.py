@@ -26,7 +26,7 @@ def get_historical_data(fsym="ETH",
         "api_key": API_KEY
     }
 
-    url = base + urllib.parse.urlencode(params)
+    url = "{}{}".format(base, urllib.parse.urlencode(params))
 
     f = requests.get(url)
     ipdata = f.json()
