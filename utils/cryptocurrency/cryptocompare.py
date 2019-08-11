@@ -27,9 +27,10 @@ def get_historical_data(fsym="ETH",
                         tsym="USD",
                         e="kraken",
                         limit=2000,
+                        maxEntry=18000,
                         allData="true"):
 
-    base = "{}histoday?".format(BASE)
+    base = "{}histohour?".format(BASE)
     params = {
         "fsym": fsym,
         "tsym": tsym,
@@ -39,23 +40,31 @@ def get_historical_data(fsym="ETH",
         "api_key": API_KEY
     }
 
-    f = requests.get(base, params=params).json()
-    data = pd.DataFrame(f['Data'])
+    data = pd.DataFrame()
+    for i in range(int(maxEntry / limit)):
+        f = requests.get(base, params=params).json()
+        data = pd.DataFrame(f['Data']).append(data)
 
-    return data
+        params["toTs"] = data.time.iloc[0] - 3600
+
+    return data.reset_index()
 
 
-def get_social_data(coin="ETH", limit=2000):
+def get_social_data(coin="ETH", limit=2000, maxEntry=18000):
     """TODO: SocialData & PricingData must have the same timestamps"""
     # BTC: 1182
     # ETH: 7605
     list = get_coinlist()
     coin_id = list.loc[coin, :].Id
 
-    base = "{}social/coin/histo/day?".format(BASE)
+    base = "{}social/coin/histo/hour?".format(BASE)
     params = {"coinId": coin_id, "limit": limit, "api_key": API_KEY}
 
-    f = requests.get(base, params=params).json()
-    data = pd.DataFrame(f['Data'])
+    data = pd.DataFrame()
+    for i in range(int(maxEntry / limit)):
+        f = requests.get(base, params=params).json()
+        data = pd.DataFrame(f['Data']).append(data)
 
-    return data
+        params["toTs"] = data.time.iloc[0] - 3600
+
+    return data.reset_index()
