@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""CPAI (for CryptoCurrency Prediction IA), is developed to try to predict
+"""CPAI (for CryptoCurrency Prediction AI), is developed to try to predict
 future prices (or at least trends) of CryptoCurrencies.
 Copyright (C) 2019  Clément POIRET
 
