@@ -29,22 +29,46 @@ def ichimoku(X, shift=26):
 
 
 def MACD(X):
-    raise NotImplementedError
+    #taking close price
+    macd, macdsignal, macdhist = talib.MACD(X.close,
+                                            fastperiod=12,
+                                            slowperiod=26,
+                                            signalperiod=9)
+    return macd, macdsignal, macdhist
 
 
 def bollinger(X):
     #taking closing prices
-    #returning (bolu, ma, bold)
-    return talib.BBANDS(X)
+    bolu, ma, bold = talib.BBANDS(X.close)
+    return bolu, ma, bold
 
 
-def fourrier(X):
-    raise NotImplementedError
+def fourier(X):
+    close_fft = np.fft.fft(np.asarray(X.close.tolist()))
+    fft_df = pd.DataFrame({'fft': close_fft})
+    #fft_df['absolute'] = fft_df['fft'].apply(lambda x: np.abs(x))
+    #fft_df['angle'] = fft_df['fft'].apply(lambda x: np.angle(x))
+
+    fft_list = np.asarray(fft_df['fft'].tolist())
+
+    fourier = pd.DataFrame()
+    for num_ in [3, 6, 9, 100]:
+        fft_list_m10 = np.copy(fft_list)
+        fft_list_m10[num_:-num_] = 0
+        fourier[num_] = np.fft.ifft(fft_list_m10)
+
+    return fourier
 
 
-def stochastic(X):
-    raise NotImplementedError
+def stochastic_rsi(X):
+    fastk, fastd = talib.STOCHRSI(X.close,
+                                  timeperiod=14,
+                                  fastk_period=5,
+                                  fastd_period=3,
+                                  fastd_matype=0)
+    return fastk, fastd
 
 
 def ADX(X):
-    raise NotImplementedError
+    real = talib.ADX(X.high, X.low, X.close, timeperiod=14)
+    return real

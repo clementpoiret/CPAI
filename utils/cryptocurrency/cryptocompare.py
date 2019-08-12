@@ -28,7 +28,8 @@ def get_historical_data(fsym="ETH",
                         e="kraken",
                         limit=2000,
                         maxEntry=18000,
-                        allData="true"):
+                        allData="true",
+                        save=True):
 
     base = "{}histohour?".format(BASE)
     params = {
@@ -40,6 +41,8 @@ def get_historical_data(fsym="ETH",
         "api_key": API_KEY
     }
 
+    print("Getting historical data from CryptoCompare's API...")
+
     data = pd.DataFrame()
     for i in range(int(maxEntry / limit)):
         f = requests.get(base, params=params).json()
@@ -47,10 +50,15 @@ def get_historical_data(fsym="ETH",
 
         params["toTs"] = data.time.iloc[0] - 3600
 
-    return data.reset_index()
+    data = data.reset_index(drop=True)
+
+    if save:
+        data.to_csv("data.csv", index=False)
+
+    return data
 
 
-def get_social_data(coin="ETH", limit=2000, maxEntry=18000):
+def get_social_data(coin="ETH", limit=2000, maxEntry=18000, save=True):
     """TODO: SocialData & PricingData must have the same timestamps"""
     # BTC: 1182
     # ETH: 7605
@@ -60,6 +68,8 @@ def get_social_data(coin="ETH", limit=2000, maxEntry=18000):
     base = "{}social/coin/histo/hour?".format(BASE)
     params = {"coinId": coin_id, "limit": limit, "api_key": API_KEY}
 
+    print("Getting social data from CryptoCompare's API...")
+
     data = pd.DataFrame()
     for i in range(int(maxEntry / limit)):
         f = requests.get(base, params=params).json()
@@ -67,4 +77,9 @@ def get_social_data(coin="ETH", limit=2000, maxEntry=18000):
 
         params["toTs"] = data.time.iloc[0] - 3600
 
-    return data.reset_index()
+    data = data.reset_index(drop=True)
+
+    if save:
+        data.to_csv("social.csv", index=False)
+
+    return data
