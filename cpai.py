@@ -21,16 +21,40 @@ For any questions, contact me at poiret.clement[at]outlook[dot]fr"""
 # Import libraries
 import numpy as np
 import pandas as pd
-import utils.cryptocurrency.cryptocompare
+import utils.cryptocurrency.cryptocompare as cc
+import utils.helpers as hp
 
 # Global variables
+N_FUTURE = 32
+N_PAST = 2048
+
 
 # Functions
+def get_data():
+    print("Getting data...")
+
+    historical_btc = cc.get_historical_data(fsym="BTC", save=False)
+    historical_eth = cc.get_historical_data()
+    social = cc.get_social_data()
+
+    print("Merging data on seconds from epoch...")
+    data = hp.merge_truncate(historical_eth, social)
+
+    historical_btc.columns = [
+        s + "_btc" if s != "time" else s for s in historical_btc.columns
+    ]
+
+    data = hp.merge_truncate(historical_btc, data).reset_index(drop=True)
+
+    return data
 
 
 def main():
     """Launcher."""
-    # init the GUI or anything else
+    data = get_data()
+
+    X_train, y_train = hp.preprocessing_pipeline(data, N_PAST, N_FUTURE)
+
     pass
 
 
