@@ -11,7 +11,7 @@ from sklearn.preprocessing import MinMaxScaler
 
 
 def impute_ts(X):
-    X[X == 0] = np.nan
+    X = X.replace(0, np.nan)
     X = X.interpolate()
 
     return X
@@ -51,7 +51,6 @@ def preprocessing_pipeline(X, n_past, n_future):
 
     preprocessed = scale(preprocessed)
 
-    #! Double check if loops are good
     X_train = [
         preprocessed[i - n_past:i, :]
         for i in range(n_past,

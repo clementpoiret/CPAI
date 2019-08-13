@@ -6,7 +6,7 @@ import pandas as pd
 import requests
 
 # Global variables
-API_KEY = pd.read_csv("utils/cryptocurrency/credentials")["CryptoCompareAPI"][0]
+API_KEY = pd.read_csv("credentials")["CryptoCompareAPI"][0]
 BASE = "https://min-api.cryptocompare.com/data/"
 
 
@@ -41,7 +41,8 @@ def get_historical_data(fsym="ETH",
         "api_key": API_KEY
     }
 
-    print("Getting historical data from CryptoCompare's API...")
+    print("Getting {}'s historical data from CryptoCompare's API...").format(
+        fsym)
 
     data = pd.DataFrame()
     for i in range(int(maxEntry / limit)):
@@ -68,7 +69,7 @@ def get_social_data(coin="ETH", limit=2000, maxEntry=18000, save=True):
     base = "{}social/coin/histo/hour?".format(BASE)
     params = {"coinId": coin_id, "limit": limit, "api_key": API_KEY}
 
-    print("Getting social data from CryptoCompare's API...")
+    print("Getting {}'s social data from CryptoCompare's API...").format(coin)
 
     data = pd.DataFrame()
     for i in range(int(maxEntry / limit)):
