@@ -6,6 +6,8 @@ import numpy as np
 import pandas as pd
 import talib
 
+from pytrends.request import TrendReq
+
 # Global variables
 
 
@@ -72,3 +74,45 @@ def stochastic_rsi(X):
 def ADX(X):
     real = talib.ADX(X.high, X.low, X.close, timeperiod=14)
     return real
+
+
+def google_trend(kw_list=["ETH", "Ethereum"],
+                 year_start=2018,
+                 month_start=1,
+                 day_start=1,
+                 hour_start=0,
+                 year_end=2019,
+                 month_end=8,
+                 day_end=13,
+                 hour_end=0,
+                 cat=0,
+                 geo="",
+                 gprop="",
+                 sleep=0):
+
+    pytrends = TrendReq()
+
+    print(
+        "Sending requests to get Google Trends. It may take some time, please be patient..."
+    )
+
+    trends = pytrends.get_historical_interest(kw_list,
+                                              year_start=year_start,
+                                              month_start=month_start,
+                                              day_start=day_start,
+                                              hour_start=hour_start,
+                                              year_end=year_end,
+                                              month_end=month_end,
+                                              day_end=day_end,
+                                              hour_end=hour_end,
+                                              cat=cat,
+                                              geo=geo,
+                                              gprop=gprop,
+                                              sleep=sleep)
+
+    dates = trends.index
+    time = [t.timestamp for t in dates]
+    trends = trends.reset_index(drop=True)
+    trends["time"] = time
+
+    return trends
