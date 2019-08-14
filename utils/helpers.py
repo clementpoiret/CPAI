@@ -5,6 +5,7 @@ such as an imputer to deal with missing values"""
 # Importing libraries
 import numpy as np
 import pandas as pd
+import utils.cryptocurrency.cryptocompare as cc
 
 from impyute.imputation.ts import moving_window
 from sklearn.preprocessing import MinMaxScaler
@@ -65,3 +66,29 @@ def preprocessing_pipeline(X, n_past, n_future):
     X_train, y_train = np.array(X_train), np.array(y_train)
 
     return X_train, y_train
+
+
+def get_data():
+    print("Getting data...")
+
+    historical_btc = cc.get_historical_data(fsym="BTC", save=False)
+    historical_eth = cc.get_historical_data()
+    social = cc.get_social_data()
+
+    print("Merging data on seconds from epoch...")
+    data = merge_truncate(historical_eth, social)
+
+    historical_btc.columns = [
+        s + "_btc" if s != "time" else s for s in historical_btc.columns
+    ]
+
+    data = merge_truncate(historical_btc, data).reset_index(drop=True)
+
+    return data
+
+
+def split(X, testcol="close", limit=32):
+    data_train = X.iloc[:len(X) - limit, :]
+    y_test = X.iloc[len(X) - limit:, X.columns.get_loc("close")]
+
+    return data_train, y_test
