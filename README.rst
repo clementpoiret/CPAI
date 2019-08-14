@@ -3,14 +3,16 @@ CPAI
 ====
 
 
-Add a short description here!
+Artificial Intelligence for CryptoCurrency market prices predictions.
 
 
 Description
 ===========
 
-A longer description of your project goes here...
+Recurrent Neural Network (Many-to-Many approach) based on historical and social datas.
 
 
 Note
 ====
+- Early and unstable,
+- RNN's architecture not implemented yet (WIP).
