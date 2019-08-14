@@ -100,6 +100,13 @@ def get_historical_data(fsym="ETH",
         else:
             print("Local database is less than 3 hours old, no update needed.")
             data = last_historical
+    else:
+        data = inner_get(fsym=fsym,
+                         tsym=tsym,
+                         e=e,
+                         limit=limit,
+                         maxEntry=maxEntry,
+                         allData=allData)
 
     if save:
         if not os.path.exists("tmp/"):
