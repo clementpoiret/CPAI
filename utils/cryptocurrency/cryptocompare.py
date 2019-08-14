@@ -68,8 +68,8 @@ def get_historical_data(fsym="ETH",
 
         return data.reset_index(drop=True)
 
-    if os.path.exists("tmp/data.csv"):
-        last_historical = pd.read_csv("tmp/data.csv")
+    if os.path.exists("tmp/data_{}{}.csv".format(fsym, tsym)):
+        last_historical = pd.read_csv("tmp/data_{}{}.csv".format(fsym, tsym))
         last_time = last_historical.time.iloc[-1]
         now = time.time()
         d = int((now - last_time) / 3600)
@@ -112,7 +112,7 @@ def get_historical_data(fsym="ETH",
         if not os.path.exists("tmp/"):
             os.mkdir("tmp/")
 
-        data.to_csv("tmp/data.csv", index=False)
+        data.to_csv("tmp/data_{}{}.csv".format(fsym, tsym), index=False)
 
     return data
 
@@ -142,8 +142,8 @@ def get_social_data(coin="ETH", limit=2000, maxEntry=18000, save=True):
 
         return data.reset_index(drop=True)
 
-    if os.path.exists("tmp/social.csv"):
-        last_social = pd.read_csv("tmp/social.csv")
+    if os.path.exists("tmp/social_{}.csv".format(coin)):
+        last_social = pd.read_csv("tmp/social_{}.csv".format(coin))
         last_time = last_social.time.iloc[-1]
         now = time.time()
         d = int((now - last_time) / 3600)
@@ -172,6 +172,6 @@ def get_social_data(coin="ETH", limit=2000, maxEntry=18000, save=True):
         if not os.path.exists("tmp/"):
             os.mkdir("tmp/")
 
-        data.to_csv("tmp/social.csv", index=False)
+        data.to_csv("tmp/social_{}.csv".format(coin), index=False)
 
     return data

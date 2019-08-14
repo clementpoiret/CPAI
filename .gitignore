@@ -12,6 +12,7 @@ __pycache__/*
 .cache/*
 .*.swp
 */.ipynb_checkpoints/*
+tmp/*
 
 # Project files
 .ropeproject
@@ -49,6 +50,6 @@ MANIFEST
 .venv*/
 .vscode/*
 utils/cryptocurrency/credentials
-data.csv
-social.csv
+
+# Confidential informations
 credentials

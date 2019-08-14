@@ -69,10 +69,11 @@ def preprocessing_pipeline(X, n_past, n_future):
 
 
 def get_data():
+    # TODO: Change hardcoded parameters (ie. BTC/ETH)
     print("Getting data...")
 
-    historical_btc = cc.get_historical_data(fsym="BTC", save=False)
-    historical_eth = cc.get_historical_data()
+    historical_btc = cc.get_historical_data(fsym="BTC")
+    historical_eth = cc.get_historical_data(fsym="ETH")
     social = cc.get_social_data()
 
     print("Merging data on seconds from epoch...")
