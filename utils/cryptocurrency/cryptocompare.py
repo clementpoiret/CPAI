@@ -2,7 +2,10 @@
 """This module is used to get informations from CryptoCompare"""
 
 # Importing libraries
+import os
 import pandas as pd
+import time
+import datetime
 import requests
 
 # Global variables
@@ -20,7 +23,12 @@ def get_coinlist():
 
 
 def get_exchangelist():
-    raise NotImplementedError
+    base = "{}v3/all/exchanges".format(BASE)
+
+    f = requests.get(base).json()
+    data = pd.DataFrame(f['Data'])
+
+    return data.T
 
 
 def get_historical_data(fsym="ETH",
@@ -31,56 +39,132 @@ def get_historical_data(fsym="ETH",
                         allData="true",
                         save=True):
 
-    base = "{}histohour?".format(BASE)
-    params = {
-        "fsym": fsym,
-        "tsym": tsym,
-        "e": e,
-        "limit": limit,
-        "allData": allData,
-        "api_key": API_KEY
-    }
+    def inner_get(fsym=fsym,
+                  tsym=tsym,
+                  e=e,
+                  limit=limit,
+                  maxEntry=maxEntry,
+                  allData=allData):
 
-    print("Getting {}'s historical data from CryptoCompare's API...").format(
-        fsym)
+        base = "{}histohour?".format(BASE)
+        params = {
+            "fsym": fsym,
+            "tsym": tsym,
+            "e": e,
+            "limit": limit,
+            "allData": allData,
+            "api_key": API_KEY
+        }
 
-    data = pd.DataFrame()
-    for i in range(int(maxEntry / limit)):
-        f = requests.get(base, params=params).json()
-        data = pd.DataFrame(f['Data']).append(data)
+        print("Getting {}'s historical data from CryptoCompare's API...".format(
+            fsym))
 
-        params["toTs"] = data.time.iloc[0] - 3600
+        data = pd.DataFrame()
+        for i in range(int(maxEntry / limit)):
+            f = requests.get(base, params=params).json()
+            data = pd.DataFrame(f['Data']).append(data)
 
-    data = data.reset_index(drop=True)
+            params["toTs"] = data.time.iloc[0] - 3600
+
+        return data.reset_index(drop=True)
+
+    if os.path.exists("tmp/data.csv"):
+        last_historical = pd.read_csv("tmp/data.csv")
+        last_time = last_historical.time.iloc[-1]
+        now = time.time()
+        d = int((now - last_time) / 3600)
+
+        if (d < 2000) & (d > 3):
+            limit = d - 1
+            maxEntry = d - 1
+
+            print("Updating local historical database...")
+            data = inner_get(fsym=fsym,
+                             tsym=tsym,
+                             e=e,
+                             limit=limit,
+                             maxEntry=maxEntry,
+                             allData=allData)
+
+            data = last_historical.append(data).reset_index(drop=True)
+
+        elif d > 2000:
+            print("Local database too old, rebuilding...")
+            data = inner_get(fsym=fsym,
+                             tsym=tsym,
+                             e=e,
+                             limit=limit,
+                             maxEntry=maxEntry,
+                             allData=allData)
+
+        else:
+            print("Local database is less than 3 hours old, no update needed.")
+            data = last_historical
 
     if save:
-        data.to_csv("data.csv", index=False)
+        if not os.path.exists("tmp/"):
+            os.mkdir("tmp/")
+
+        data.to_csv("tmp/data.csv", index=False)
 
     return data
 
 
 def get_social_data(coin="ETH", limit=2000, maxEntry=18000, save=True):
     """TODO: SocialData & PricingData must have the same timestamps"""
+
     # BTC: 1182
     # ETH: 7605
-    list = get_coinlist()
-    coin_id = list.loc[coin, :].Id
 
-    base = "{}social/coin/histo/hour?".format(BASE)
-    params = {"coinId": coin_id, "limit": limit, "api_key": API_KEY}
+    def inner_get(coin, limit, maxEntry):
+        list = get_coinlist()
+        coin_id = list.loc[coin, :].Id
 
-    print("Getting {}'s social data from CryptoCompare's API...").format(coin)
+        base = "{}social/coin/histo/hour?".format(BASE)
+        params = {"coinId": coin_id, "limit": limit, "api_key": API_KEY}
 
-    data = pd.DataFrame()
-    for i in range(int(maxEntry / limit)):
-        f = requests.get(base, params=params).json()
-        data = pd.DataFrame(f['Data']).append(data)
+        print(
+            "Getting {}'s social data from CryptoCompare's API...".format(coin))
 
-        params["toTs"] = data.time.iloc[0] - 3600
+        data = pd.DataFrame()
+        for i in range(int(maxEntry / limit)):
+            f = requests.get(base, params=params).json()
+            data = pd.DataFrame(f['Data']).append(data)
 
-    data = data.reset_index(drop=True)
+            params["toTs"] = data.time.iloc[0] - 3600
+
+        return data.reset_index(drop=True)
+
+    if os.path.exists("tmp/social.csv"):
+        last_social = pd.read_csv("tmp/social.csv")
+        last_time = last_social.time.iloc[-1]
+        now = time.time()
+        d = int((now - last_time) / 3600)
+
+        if (d < 2000) & (d > 3):
+            limit = d - 1
+            maxEntry = d - 1
+
+            print("Updating local social database...")
+            data = inner_get(coin, limit, maxEntry)
+
+            data = last_social.append(data).reset_index(drop=True)
+
+        elif d > 2000:
+            print("Local database too old, rebuilding...")
+            data = inner_get(coin, limit, maxEntry)
+
+        else:
+            print("Local database is less than 3 hours old, no update needed.")
+            data = last_social
+
+    else:
+        data = inner_get(coin, limit, maxEntry)
 
     if save:
-        data.to_csv("social.csv", index=False)
+        if not os.path.exists("tmp/"):
+            os.mkdir("tmp/")
+
+        data.to_csv("tmp/social.csv", index=False)
 
     return data

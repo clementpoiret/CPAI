@@ -88,12 +88,12 @@ def google_trend(kw_list=["ETH", "Ethereum"],
                  cat=0,
                  geo="",
                  gprop="",
-                 sleep=0):
+                 sleep=60):
 
     pytrends = TrendReq()
 
     print(
-        "Sending requests to get Google Trends. It may take some time, please be patient..."
+        "Sending requests to Google Trends. It may take some time as requests are beeing splitted for each week, please be patient..."
     )
 
     trends = pytrends.get_historical_interest(kw_list,
