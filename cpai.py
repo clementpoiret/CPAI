@@ -40,10 +40,17 @@ def main():
     data_train, y_test = hp.split(data, "close", N_FUTURE)
 
     X_train, y_train = hp.preprocessing_pipeline(data_train, N_PAST, N_FUTURE)
+    """
+    X_train = np.load("tmp/X_train.npy")
 
-    np.save("tmp/X_train.npy", X_train)
-    np.save("tmp/y_train.npy", y_train)
-    np.save("tmp/y_test.npy", y_test)
+    np_load_old = np.load
+    # modify the default parameters of np.load
+    np.load = lambda *a, **k: np_load_old(*a, allow_pickle=True, **k)
+
+    y_train = np.load("tmp/y_train.npy")
+
+    y_test = np.load("tmp/y_test.npy")
+    """
 
     regressor = md.build_regressor(N_PAST, X_train.shape[2])
 
@@ -69,7 +76,6 @@ def main():
                             y_train,
                             epochs=128,
                             callbacks=[es, rlr, mcp, tb],
-                            validation_split=0.2,
                             verbose=1,
                             batch_size=64)
 

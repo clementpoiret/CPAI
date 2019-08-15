@@ -19,27 +19,18 @@ def build_regressor(n_past, n_features):
                   input_shape=(n_past, n_features)))
     regressor.add(Dropout(rate=.2))
 
-    regressor.add(
-        CuDNNLSTM(units=65,
-                  return_sequences=True,
-                  input_shape=(n_past, n_features)))
+    regressor.add(CuDNNLSTM(units=65, return_sequences=True))
     regressor.add(Dropout(rate=.2))
 
-    regressor.add(
-        CuDNNLSTM(units=65,
-                  return_sequences=True,
-                  input_shape=(n_past, n_features)))
+    regressor.add(CuDNNLSTM(units=65, return_sequences=True))
     regressor.add(Dropout(rate=.2))
 
-    regressor.add(
-        CuDNNLSTM(units=65,
-                  return_sequences=True,
-                  input_shape=(n_past, n_features)))
+    regressor.add(CuDNNLSTM(units=65, return_sequences=True))
     regressor.add(Dropout(rate=.2))
 
     regressor.add(Flatten())
 
-    regressor.add(Dense(units=1, activation="sigmoid"))
+    regressor.add(Dense(units=1, activation="linear"))
 
     regressor.compile(optimizer="rmsprop", loss="mean_squared_error")
 

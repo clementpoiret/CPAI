@@ -59,7 +59,7 @@ def preprocessing_pipeline(X, n_past, n_future):
                        len(preprocessed) - n_future + 1)
     ]
     y_train = [
-        preprocessed[i:i + n_future + 1, 0]
+        preprocessed[i + n_future - 1:i + n_future, 0]
         for i in range(n_past,
                        len(preprocessed) - n_future + 1)
     ]
