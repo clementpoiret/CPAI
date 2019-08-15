@@ -2,6 +2,7 @@
 """This module is used to compute informations related to princing history"""
 
 # Importing libraries
+import os
 import numpy as np
 import pandas as pd
 import talib
@@ -27,7 +28,15 @@ def ichimoku(X, shift=26):
     period52_low = X.low.rolling(window=52).max()
     senkou_span_b = ((period52_high + period52_low) / 2).shift(shift)
 
-    return tenkan_sen, kijun_sen, senkou_span_a, senkou_span_b
+    ichimoku_df = pd.DataFrame({
+        "time": X.time,
+        "tenkan_sen": tenkan_sen,
+        "kijun_sen": kijun_sen,
+        "senkou_span_a": senkou_span_a,
+        "senkou_span_b": senkou_span_b
+    })
+
+    return ichimoku_df
 
 
 def MACD(X):
@@ -36,13 +45,29 @@ def MACD(X):
                                             fastperiod=12,
                                             slowperiod=26,
                                             signalperiod=9)
-    return macd, macdsignal, macdhist
+
+    MACD_df = pd.DataFrame({
+        "time": X.time,
+        "macd": macd,
+        "macdsignal": macdsignal,
+        "macdhist": macdhist
+    })
+
+    return MACD_df
 
 
 def bollinger(X):
     #taking closing prices
     bolu, ma, bold = talib.BBANDS(X.close)
-    return bolu, ma, bold
+
+    bollinger_df = pd.DataFrame({
+        "time": X.time,
+        "bolu": bolu,
+        "ma": ma,
+        "bold": bold
+    })
+
+    return bollinger_df
 
 
 def fourier(X):
@@ -59,6 +84,8 @@ def fourier(X):
         fft_list_m10[num_:-num_] = 0
         fourier[num_] = np.fft.ifft(fft_list_m10)
 
+    fourier["time"] = X.time
+
     return fourier
 
 
@@ -68,17 +95,27 @@ def stochastic_rsi(X):
                                   fastk_period=5,
                                   fastd_period=3,
                                   fastd_matype=0)
-    return fastk, fastd
+
+    stochastic_rsi_df = pd.DataFrame({
+        "time": X.time,
+        "fastk": fastk,
+        "fastd": fastd
+    })
+
+    return stochastic_rsi_df
 
 
 def ADX(X):
     real = talib.ADX(X.high, X.low, X.close, timeperiod=14)
-    return real
+
+    ADX_df = pd.DataFrame({"time": X.time, "real": real})
+
+    return ADX_df
 
 
 def google_trend(kw_list=["ETH", "Ethereum"],
                  year_start=2018,
-                 month_start=1,
+                 month_start=9,
                  day_start=1,
                  hour_start=0,
                  year_end=2019,
@@ -88,7 +125,8 @@ def google_trend(kw_list=["ETH", "Ethereum"],
                  cat=0,
                  geo="",
                  gprop="",
-                 sleep=60):
+                 sleep=60,
+                 save=True):
 
     pytrends = TrendReq()
 
@@ -114,5 +152,11 @@ def google_trend(kw_list=["ETH", "Ethereum"],
     time = [t.timestamp for t in dates]
     trends = trends.reset_index(drop=True)
     trends["time"] = time
+
+    if save:
+        if not os.path.exists("tmp/"):
+            os.mkdir("tmp/")
+
+        trends.to_csv("tmp/trends_{}.csv".format(kw_list[0]), index=False)
 
     return trends

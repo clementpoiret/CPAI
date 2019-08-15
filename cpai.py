@@ -22,6 +22,7 @@ For any questions, contact me at poiret.clement[at]outlook[dot]fr"""
 import numpy as np
 import pandas as pd
 import utils.helpers as hp
+import utils.neuralnet.model as md
 
 # Global variables
 N_FUTURE = 32
@@ -31,10 +32,20 @@ N_PAST = 2048
 def main():
     """Launcher."""
     data = hp.get_data()
+    data.to_csv("tmp/data.csv", index=False)
 
+    data = data.drop(columns=["time"])
     data_train, y_test = hp.split(data, "close", N_FUTURE)
 
     X_train, y_train = hp.preprocessing_pipeline(data_train, N_PAST, N_FUTURE)
+
+    np.save("tmp/X_train.npy", X_train)
+    np.save("tmp/y_train.npy", y_train)
+    np.save("tmp/y_test.npy", y_test)
+
+    regressor = md.build_regressor(N_PAST, X_train.shape[2])
+
+    regressor.fit(X_train, y_train, batch_size=64, epochs=128)
 
 
 if __name__ == "__main__":

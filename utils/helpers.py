@@ -6,6 +6,7 @@ such as an imputer to deal with missing values"""
 import numpy as np
 import pandas as pd
 import utils.cryptocurrency.cryptocompare as cc
+import utils.technicalanalysis.indicators as ind
 
 from impyute.imputation.ts import moving_window
 from sklearn.preprocessing import MinMaxScaler
@@ -76,14 +77,36 @@ def get_data():
     historical_eth = cc.get_historical_data(fsym="ETH")
     social = cc.get_social_data()
 
-    print("Merging data on seconds from epoch...")
-    data = merge_truncate(historical_eth, social)
+    print("Computing indicators...")
+    print("Computing Ichimoku Kinko Hyo...")
+    ichimoku = ind.ichimoku(historical_eth, shift=0)
+
+    print("Computing MACD...")
+    macd = ind.MACD(historical_eth)
+
+    print("Computing bollinger bands...")
+    bbands = ind.bollinger(historical_eth)
+
+    print("Computing fourier transformations at 3, 6, 9 and 100 components...")
+    fourier = ind.fourier(historical_eth)
+
+    print("Computing stochastic rsi...")
+    s_rsi = ind.stochastic_rsi(historical_eth)
+
+    print("Computing ADX...")
+    adx = ind.ADX(historical_eth)
 
     historical_btc.columns = [
         s + "_btc" if s != "time" else s for s in historical_btc.columns
     ]
 
-    data = merge_truncate(historical_btc, data).reset_index(drop=True)
+    data = pd.merge(historical_eth, historical_btc, on="time").merge(
+        ichimoku,
+        on="time").merge(macd, on="time").merge(bbands, on="time").merge(
+            fourier, on="time").merge(s_rsi, on="time").merge(adx, on="time")
+
+    print("Merging data on seconds from epoch...")
+    data = merge_truncate(data, social)
 
     return data
 
@@ -93,3 +116,9 @@ def split(X, testcol="close", limit=32):
     y_test = X.iloc[len(X) - limit:, X.columns.get_loc("close")]
 
     return data_train, y_test
+
+
+def compute_indicators(X):
+    ind.ichimoku(X, shift=0)
+
+    return indicators
