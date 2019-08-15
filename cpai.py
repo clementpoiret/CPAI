@@ -24,6 +24,8 @@ import pandas as pd
 import utils.helpers as hp
 import utils.neuralnet.model as md
 
+from keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint, TensorBoard
+
 # Global variables
 N_FUTURE = 32
 N_PAST = 2048
@@ -45,7 +47,31 @@ def main():
 
     regressor = md.build_regressor(N_PAST, X_train.shape[2])
 
-    regressor.fit(X_train, y_train, batch_size=64, epochs=128)
+    es = EarlyStopping(monitor='val_loss',
+                       min_delta=1e-10,
+                       patience=10,
+                       verbose=1)
+
+    rlr = ReduceLROnPlateau(monitor='val_loss',
+                            factor=0.5,
+                            patience=5,
+                            verbose=1)
+
+    mcp = ModelCheckpoint(filepath='weights.h5',
+                          monitor='val_loss',
+                          verbose=1,
+                          save_best_only=True,
+                          save_weights_only=True)
+
+    tb = TensorBoard('logs')
+
+    history = regressor.fit(X_train,
+                            y_train,
+                            epochs=128,
+                            callbacks=[es, rlr, mcp, tb],
+                            validation_split=0.2,
+                            verbose=1,
+                            batch_size=64)
 
 
 if __name__ == "__main__":
