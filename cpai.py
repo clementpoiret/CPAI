@@ -43,21 +43,11 @@ def main():
 
     regressor = md.build_regressor(N_PAST, X_train.shape[2])
 
-    es = EarlyStopping(monitor='val_loss',
-                       min_delta=1e-10,
-                       patience=10,
-                       verbose=1)
+    es = EarlyStopping(monitor='loss', min_delta=1e-10, patience=10, verbose=1)
 
-    rlr = ReduceLROnPlateau(monitor='val_loss',
-                            factor=0.5,
-                            patience=5,
-                            verbose=1)
+    rlr = ReduceLROnPlateau(monitor='loss', factor=0.5, patience=5, verbose=1)
 
-    mcp = ModelCheckpoint(filepath='weights.h5',
-                          monitor='val_loss',
-                          verbose=1,
-                          save_best_only=True,
-                          save_weights_only=True)
+    mcp = ModelCheckpoint(filepath='weights.h5', monitor='loss', verbose=1)
 
     tb = TensorBoard('logs')
 
