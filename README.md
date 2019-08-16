@@ -1,11 +1,11 @@
 # CPAI
-____
+
 
 Artificial Intelligence for CryptoCurrency market prices predictions.
 
 
 ## Description
-____
+
 
 ### Database
 
@@ -35,9 +35,12 @@ the RNN:
 
 Currently used model is pretty basic. It's a stacked LSTM model taking
 an input of shape (2048, 60).
+
 There are 4 LSTM layers of 65 neurons each,with a relu activation function
 connected to a Dense layer (output layer) of 32 neurons with a linear
 activation function.
+Each LSTM layer has a Dropout rate of .2.
+
 As of now, the regressor is using a classical mean squared error loss
 function, with a rmsprop optimizer, a batch size of 64 and 128 epochs.
 
@@ -46,7 +49,7 @@ function, with a rmsprop optimizer, a batch size of 64 and 128 epochs.
 *The model needs hyperparameters tuning.*
 
 ## Note
-____
+
 - Early and unstable,
 - Basic RNN still not tuned,
 - Integrating Google Trends is theoretically working, but pytrends' API isn't
