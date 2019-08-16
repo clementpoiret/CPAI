@@ -1,13 +1,11 @@
-====
-CPAI
-====
-
+# CPAI
+____
 
 Artificial Intelligence for CryptoCurrency market prices predictions.
 
 
-Description
-===========
+## Description
+____
 
 ### Database
 
@@ -43,10 +41,12 @@ activation function.
 As of now, the regressor is using a classical mean squared error loss
 function, with a rmsprop optimizer, a batch size of 64 and 128 epochs.
 
+![model](model.png)
+
 *The model needs hyperparameters tuning.*
 
-Note
-====
+## Note
+____
 - Early and unstable,
 - Basic RNN still not tuned,
 - Integrating Google Trends is theoretically working, but pytrends' API isn't
