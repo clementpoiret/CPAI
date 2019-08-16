@@ -24,6 +24,7 @@ def merge_truncate(historical, social):
     first_nonzero = next((i for i, x in enumerate(social.values[:, 2]) if x),
                          None)
     social = social.iloc[first_nonzero:, :]
+    social = impute_ts(social)
 
     data = pd.merge(historical, social, on="time").reset_index(drop=True)
 
@@ -40,13 +41,13 @@ def scale(X):
 def preprocessing_pipeline(X, n_past, n_future):
     columns_to_drop = []
     for col in X.columns:
-        if (X[col] == 0).all():
+        if X[col].isnull().all():
             columns_to_drop.append(col)
     preprocessed = X.drop(columns=columns_to_drop)
 
-    for col in preprocessed.columns:
-        if (preprocessed[col] == 0).any():
-            preprocessed[col] = impute_ts(X[col])
+    # for col in preprocessed.columns:
+    #     if (preprocessed[col] == 0).any():
+    #         preprocessed[col] = impute_ts(X[col])
 
     preprocessed = preprocessed.astype(float)
     preprocessed = preprocessed.values
@@ -74,7 +75,11 @@ def get_data(main="ETH", secondary="BTC"):
     print("Getting data...")
 
     historical_main = cc.get_historical_data(fsym=main)
+    historical_main = impute_ts(historical_main)
+
     historical_secondary = cc.get_historical_data(fsym=secondary)
+    historical_secondary = impute_ts(historical_secondary)
+
     social = cc.get_social_data()
 
     print("Computing indicators...")
