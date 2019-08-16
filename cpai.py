@@ -40,17 +40,6 @@ def main():
     data_train, y_test = hp.split(data, "close", N_FUTURE)
 
     X_train, y_train = hp.preprocessing_pipeline(data_train, N_PAST, N_FUTURE)
-    """
-    X_train = np.load("tmp/X_train.npy")
-
-    np_load_old = np.load
-    # modify the default parameters of np.load
-    np.load = lambda *a, **k: np_load_old(*a, allow_pickle=True, **k)
-
-    y_train = np.load("tmp/y_train.npy")
-
-    y_test = np.load("tmp/y_test.npy")
-    """
 
     regressor = md.build_regressor(N_PAST, X_train.shape[2])
 

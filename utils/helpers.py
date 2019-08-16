@@ -56,12 +56,12 @@ def preprocessing_pipeline(X, n_past, n_future):
     X_train = [
         preprocessed[i - n_past:i, :]
         for i in range(n_past,
-                       len(preprocessed) - n_future + 1)
+                       len(preprocessed) - n_future)
     ]
     y_train = [
-        preprocessed[i + n_future - 1:i + n_future, 0]
+        preprocessed[i:i + n_future, 0]
         for i in range(n_past,
-                       len(preprocessed) - n_future + 1)
+                       len(preprocessed) - n_future)
     ]
 
     X_train, y_train = np.array(X_train), np.array(y_train)
@@ -69,38 +69,39 @@ def preprocessing_pipeline(X, n_past, n_future):
     return X_train, y_train
 
 
-def get_data():
+def get_data(main="ETH", secondary="BTC"):
     # TODO: Change hardcoded parameters (ie. BTC/ETH)
     print("Getting data...")
 
-    historical_btc = cc.get_historical_data(fsym="BTC")
-    historical_eth = cc.get_historical_data(fsym="ETH")
+    historical_main = cc.get_historical_data(fsym=main)
+    historical_secondary = cc.get_historical_data(fsym=secondary)
     social = cc.get_social_data()
 
     print("Computing indicators...")
     print("Computing Ichimoku Kinko Hyo...")
-    ichimoku = ind.ichimoku(historical_eth, shift=0)
+    ichimoku = ind.ichimoku(historical_main, shift=0)
 
     print("Computing MACD...")
-    macd = ind.MACD(historical_eth)
+    macd = ind.MACD(historical_main)
 
     print("Computing bollinger bands...")
-    bbands = ind.bollinger(historical_eth)
+    bbands = ind.bollinger(historical_main)
 
     print("Computing fourier transformations at 3, 6, 9 and 100 components...")
-    fourier = ind.fourier(historical_eth)
+    fourier = ind.fourier(historical_main)
 
     print("Computing stochastic rsi...")
-    s_rsi = ind.stochastic_rsi(historical_eth)
+    s_rsi = ind.stochastic_rsi(historical_main)
 
     print("Computing ADX...")
-    adx = ind.ADX(historical_eth)
+    adx = ind.ADX(historical_main)
 
-    historical_btc.columns = [
-        s + "_btc" if s != "time" else s for s in historical_btc.columns
+    historical_secondary.columns = [
+        s + "_{}".format(secondary.lower()) if s != "time" else s
+        for s in historical_secondary.columns
     ]
 
-    data = pd.merge(historical_eth, historical_btc, on="time").merge(
+    data = pd.merge(historical_main, historical_secondary, on="time").merge(
         ichimoku,
         on="time").merge(macd, on="time").merge(bbands, on="time").merge(
             fourier, on="time").merge(s_rsi, on="time").merge(adx, on="time")
@@ -116,9 +117,3 @@ def split(X, testcol="close", limit=32):
     y_test = X.iloc[len(X) - limit:, X.columns.get_loc("close")]
 
     return data_train, y_test
-
-
-def compute_indicators(X):
-    ind.ichimoku(X, shift=0)
-
-    return indicators
