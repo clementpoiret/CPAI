@@ -24,6 +24,7 @@ import pandas as pd
 import utils.helpers as hp
 import utils.neuralnet.model as md
 import matplotlib.pyplot as plt
+import joblib
 
 # Global variables
 N_FUTURE = 32
@@ -41,12 +42,12 @@ def get_datasets(validation_set=False):
         X_train, y_train = hp.preprocessing_pipeline(data_train, N_PAST,
                                                      N_FUTURE)
 
-        return X_train, y_train, y_test
+        return data, X_train, y_train, y_test
 
     else:
         X_train, y_train = hp.preprocessing_pipeline(data, N_PAST, N_FUTURE)
 
-    return X_train, y_train
+    return data, X_train, y_train
 
 
 def predict(model, data):
@@ -60,12 +61,30 @@ def main():
     training model, and computing predictions."""
 
     print("Getting X_train and y_train...")
-    X_train, y_train = get_datasets()
+    data, X_train, y_train = get_datasets()
 
     print("Building regressor...")
     regressor, history = md.train_model(X_train, y_train, N_PAST)
 
-    #sc = joblib.load("MinMaxScaler_predict.pkl")
+    print("Getting last {} hours to predict next {} hours...".format(
+        N_PAST, N_FUTURE))
+    last = data.iloc[-N_PAST:, :]
+    last = hp.preprocessing_pipeline(last,
+                                     N_PAST,
+                                     N_FUTURE,
+                                     is_testing_set=True)
+
+    prediction = regressor.predict(last)[0].reshape(-1, 1)
+
+    sc = joblib.load("MinMaxScaler_predict.pkl")
+
+    prediction = sc.inverse_transform(prediction)
+
+    last_eth = data.iloc[-N_PAST:, :].close.values.reshape(-1, 1)
+    prices = np.concatenate((last_eth, prediction))
+    plt.plot(prices)
+    plt.axvline(len(last_eth))
+    plt.show()
 
     #prediction = regressor.predict(X_test)[0].reshape(-1, 1)
     #prediction = sc.inverse_transform(prediction)
