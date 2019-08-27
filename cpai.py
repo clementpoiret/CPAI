@@ -23,40 +23,56 @@ import numpy as np
 import pandas as pd
 import utils.helpers as hp
 import utils.neuralnet.model as md
-
-from keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint, TensorBoard
+import matplotlib.pyplot as plt
 
 # Global variables
 N_FUTURE = 32
 N_PAST = 2048
 
 
-def main():
-    """Launcher."""
+def get_datasets(validation_set=False):
     data = hp.get_data()
     data.to_csv("tmp/data.csv", index=False)
 
     data = data.drop(columns=["time"])
-    data_train, y_test = hp.split(data, "close", N_FUTURE)
 
-    X_train, y_train = hp.preprocessing_pipeline(data_train, N_PAST, N_FUTURE)
+    if validation_set:
+        data_train, y_test = hp.split(data, "close", N_FUTURE)
+        X_train, y_train = hp.preprocessing_pipeline(data_train, N_PAST,
+                                                     N_FUTURE)
 
-    regressor = md.build_regressor(N_PAST, X_train.shape[2])
+        return X_train, y_train, y_test
 
-    es = EarlyStopping(monitor='loss', min_delta=1e-10, patience=10, verbose=1)
+    else:
+        X_train, y_train = hp.preprocessing_pipeline(data, N_PAST, N_FUTURE)
 
-    rlr = ReduceLROnPlateau(monitor='loss', factor=0.5, patience=5, verbose=1)
+    return X_train, y_train
 
-    mcp = ModelCheckpoint(filepath='weights.h5', monitor='loss', verbose=1)
 
-    tb = TensorBoard('logs')
+def predict(model, data):
+    X_test = data.iloc[-N_PAST:, :]
 
-    history = regressor.fit(X_train,
-                            y_train,
-                            epochs=128,
-                            callbacks=[es, rlr, mcp, tb],
-                            verbose=1,
-                            batch_size=64)
+    return model.predict(X_test)
+
+
+def main():
+    """Here we go again... Main function, getting data,
+    training model, and computing predictions."""
+
+    print("Getting X_train and y_train...")
+    X_train, y_train = get_datasets()
+
+    print("Building regressor...")
+    regressor, history = md.train_model(X_train, y_train, N_PAST)
+
+    #sc = joblib.load("MinMaxScaler_predict.pkl")
+
+    #prediction = regressor.predict(X_test)[0].reshape(-1, 1)
+    #prediction = sc.inverse_transform(prediction)
+
+    #plt.plot(y_test)
+    #plt.plot(prediction)
+    #plt.show()
 
 
 if __name__ == "__main__":

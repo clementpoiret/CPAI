@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import utils.cryptocurrency.cryptocompare as cc
 import utils.technicalanalysis.indicators as ind
+import joblib
 
 from impyute.imputation.ts import moving_window
 from sklearn.preprocessing import MinMaxScaler
@@ -33,12 +34,18 @@ def merge_truncate(historical, social):
 
 def scale(X):
     sc = MinMaxScaler(feature_range=(0, 1))
+    sc_predict = MinMaxScaler(feature_range=(0, 1))
+
     X_scaled = sc.fit_transform(X)
+    joblib.dump(sc, "MinMaxScaler.pkl")
+
+    sc_predict.fit(X[:, 0:1])
+    joblib.dump(sc_predict, "MinMaxScaler_predict.pkl")
 
     return X_scaled
 
 
-def preprocessing_pipeline(X, n_past, n_future):
+def preprocessing_pipeline(X, n_past, n_future, is_testing_set=False):
     columns_to_drop = []
     for col in X.columns:
         if X[col].isnull().all():
@@ -52,22 +59,30 @@ def preprocessing_pipeline(X, n_past, n_future):
     preprocessed = preprocessed.astype(float)
     preprocessed = preprocessed.values
 
-    preprocessed = scale(preprocessed)
+    if is_testing_set:
+        sc = joblib.load("MinMaxScaler.pkl")
+        preprocessed = sc.transform(preprocessed)
 
-    X_train = [
-        preprocessed[i - n_past:i, :]
-        for i in range(n_past,
-                       len(preprocessed) - n_future)
-    ]
-    y_train = [
-        preprocessed[i:i + n_future, 0]
-        for i in range(n_past,
-                       len(preprocessed) - n_future)
-    ]
+        X_test = np.array([preprocessed])
 
-    X_train, y_train = np.array(X_train), np.array(y_train)
+        return X_test
 
-    return X_train, y_train
+    else:
+        preprocessed = scale(preprocessed)
+        X_train = [
+            preprocessed[i - n_past:i, :]
+            for i in range(n_past,
+                           len(preprocessed) - n_future)
+        ]
+        y_train = [
+            preprocessed[i:i + n_future, 0]
+            for i in range(n_past,
+                           len(preprocessed) - n_future)
+        ]
+
+        X_train, y_train = np.array(X_train), np.array(y_train)
+
+        return X_train, y_train
 
 
 def get_data(main="ETH", secondary="BTC"):

@@ -54,3 +54,6 @@ utils/cryptocurrency/credentials
 
 # Confidential informations
 credentials
+MinMaxScaler.pkl
+MinMaxScaler_predict.pkl
+weights.h5
