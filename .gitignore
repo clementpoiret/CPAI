@@ -57,3 +57,4 @@ credentials
 MinMaxScaler.pkl
 MinMaxScaler_predict.pkl
 weights.h5
+models/regressor.h5

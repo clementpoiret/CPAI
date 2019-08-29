@@ -3,6 +3,7 @@
 such as an imputer to deal with missing values"""
 
 # Importing libraries
+import os
 import numpy as np
 import pandas as pd
 import utils.cryptocurrency.cryptocompare as cc
@@ -37,10 +38,14 @@ def scale(X):
     sc_predict = MinMaxScaler(feature_range=(0, 1))
 
     X_scaled = sc.fit_transform(X)
-    joblib.dump(sc, "MinMaxScaler.pkl")
+
+    if not os.path.exists("scalers/"):
+        os.mkdir("scalers/")
+
+    joblib.dump(sc, "scalers/MinMaxScaler.pkl")
 
     sc_predict.fit(X[:, 0:1])
-    joblib.dump(sc_predict, "MinMaxScaler_predict.pkl")
+    joblib.dump(sc_predict, "scalers/MinMaxScaler_predict.pkl")
 
     return X_scaled
 
@@ -60,7 +65,7 @@ def preprocessing_pipeline(X, n_past, n_future, is_testing_set=False):
     preprocessed = preprocessed.values
 
     if is_testing_set:
-        sc = joblib.load("MinMaxScaler.pkl")
+        sc = joblib.load("scalers/MinMaxScaler.pkl")
         preprocessed = sc.transform(preprocessed)
 
         X_test = np.array([preprocessed])

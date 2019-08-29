@@ -50,12 +50,6 @@ def get_datasets(validation_set=False):
     return data, X_train, y_train
 
 
-def predict(model, data):
-    X_test = data.iloc[-N_PAST:, :]
-
-    return model.predict(X_test)
-
-
 def main():
     """Here we go again... Main function, getting data,
     training model, and computing predictions."""
@@ -64,7 +58,12 @@ def main():
     data, X_train, y_train = get_datasets()
 
     print("Building regressor...")
-    regressor, history = md.train_model(X_train, y_train, N_PAST)
+    regressor, history = md.train_model(X_train,
+                                        y_train,
+                                        N_PAST,
+                                        optimizer="rmsprop",
+                                        batch_size=16)
+    regressor.save("models/regressor.h5")
 
     print("Getting last {} hours to predict next {} hours...".format(
         N_PAST, N_FUTURE))
@@ -76,16 +75,15 @@ def main():
 
     prediction = regressor.predict(last)[0].reshape(-1, 1)
 
-    sc = joblib.load("MinMaxScaler_predict.pkl")
+    sc = joblib.load("scalers/MinMaxScaler_predict.pkl")
 
     prediction = sc.inverse_transform(prediction)
 
     last_eth = data.iloc[-N_PAST:, :].close.values.reshape(-1, 1)
     prices = np.concatenate((last_eth, prediction))
     plt.plot(prices)
-    plt.axvline(len(last_eth))
+    plt.savefig("prediction.png")
     plt.show()
-
     #prediction = regressor.predict(X_test)[0].reshape(-1, 1)
     #prediction = sc.inverse_transform(prediction)
 
