@@ -83,6 +83,7 @@ def main():
     last_eth = data.iloc[-N_PAST:, :].close.values.reshape(-1, 1)
     prices = np.concatenate((last_eth, prediction))
     plt.plot(prices)
+    plt.axvline(N_PAST, linestyle=":")
     plt.savefig("prediction.png")
     plt.show()
     #prediction = regressor.predict(X_test)[0].reshape(-1, 1)
