@@ -62,7 +62,8 @@ def main():
                                         y_train,
                                         N_PAST,
                                         optimizer="rmsprop",
-                                        batch_size=16)
+                                        batch_size=64,
+                                        epochs=20)
     regressor.save("models/regressor.h5")
 
     print("Getting last {} hours to predict next {} hours...".format(
