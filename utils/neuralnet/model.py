@@ -7,7 +7,7 @@ is subject to a lot of changes"""
 import os
 
 from keras.models import Sequential
-from keras.layers import Dense, CuDNNLSTM, CuDNNGRU, Dropout, Flatten, Activation, PReLU
+from keras.layers import Dense, CuDNNLSTM, CuDNNGRU, Dropout, Activation, PReLU
 from keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint, TensorBoard
 from keras.utils import plot_model
 from keras.wrappers.scikit_learn import KerasRegressor
@@ -18,23 +18,23 @@ def build_regressor(n_past, n_features, optimizer="rmsprop"):
     regressor = Sequential()
 
     regressor.add(
-        CuDNNGRU(units=65,
+        CuDNNGRU(units=256,
                  return_sequences=True,
                  input_shape=(n_past, n_features)))
     regressor.add(PReLU(alpha_initializer="zeros"))
-    regressor.add(Dropout(rate=.55))
+    #regressor.add(Dropout(rate=.55))
 
-    regressor.add(CuDNNGRU(units=65, return_sequences=True))
+    regressor.add(CuDNNGRU(units=128, return_sequences=True))
     regressor.add(PReLU(alpha_initializer="zeros"))
-    regressor.add(Dropout(rate=.55))
+    #regressor.add(Dropout(rate=.55))
 
-    regressor.add(CuDNNGRU(units=65, return_sequences=True))
+    regressor.add(CuDNNGRU(units=64, return_sequences=True))
     regressor.add(PReLU(alpha_initializer="zeros"))
-    regressor.add(Dropout(rate=.55))
+    #regressor.add(Dropout(rate=.55))
 
-    regressor.add(CuDNNGRU(units=65))
+    regressor.add(CuDNNGRU(units=32))
     regressor.add(PReLU(alpha_initializer="zeros"))
-    regressor.add(Dropout(rate=.55))
+    #regressor.add(Dropout(rate=.55))
 
     regressor.add(Dense(units=32, activation="sigmoid"))
 
