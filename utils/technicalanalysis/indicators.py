@@ -82,7 +82,8 @@ def fourier(X):
     for num_ in [3, 6, 9, 100]:
         fft_list_m10 = np.copy(fft_list)
         fft_list_m10[num_:-num_] = 0
-        fourier[num_] = np.fft.ifft(fft_list_m10)
+        fourier["{}real".format(num_)] = np.fft.ifft(fft_list_m10).real
+        fourier["{}imag".format(num_)] = np.fft.ifft(fft_list_m10).imag
 
     fourier["time"] = X.time
 
