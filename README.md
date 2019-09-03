@@ -31,22 +31,30 @@ the RNN:
 - ADX,
 - Stochastic RSI.
 
+After that all features are collected, a PCA is computed, and components
+giving .99 of explained variance are kept. Let x be the number of components.
+
 ### Model
 
 Currently used model is pretty basic. It's a stacked LSTM model taking
-an input of shape (2048, 60).
+an input of shape (2048, x).
 
-There are 4 LSTM layers of 65 neurons each,with a relu activation function
-connected to a Dense layer (output layer) of 32 neurons with a linear
-activation function.
-Each LSTM layer has a Dropout rate of .2.
+There are 4 Gated Recurrent Units (GRU) layers of 256, 128, 64 and 32
+neurons each, with a parametric relu activation function connected 
+to a Dense layer (output layer) of 32 neurons with a sigmoid activation
+function.
 
 As of now, the regressor is using a classical mean squared error loss
-function, with a rmsprop optimizer, a batch size of 64 and 128 epochs.
+function, with a rmsprop optimizer, a batch size of 32 and 128 epochs.
 
 ![model](model.png)
 
 *The model needs hyperparameters tuning.*
+
+Here is the resulting prices array with historical price (left), and
+prediction (right):
+
+![prediction](prediction.png)
 
 ## Note
 
@@ -55,4 +63,5 @@ function, with a rmsprop optimizer, a batch size of 64 and 128 epochs.
 - Integrating Google Trends is theoretically working, but pytrends' API isn't
 working,
 - History is heavily limited by the quantity of social data, but this is
-related to CryptoCompare's API.
+related to CryptoCompare's API,
+- PCA is linear, why not using KernelPCA or Autoencoders?

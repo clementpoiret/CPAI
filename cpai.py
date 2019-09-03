@@ -26,6 +26,8 @@ import utils.neuralnet.model as md
 import matplotlib.pyplot as plt
 import joblib
 
+from keras.models import load_model
+
 # Global variables
 N_FUTURE = 32
 N_PAST = 2048
@@ -35,6 +37,7 @@ def get_datasets(validation_set=False):
     data = hp.get_data()
     data.to_csv("tmp/data.csv", index=False)
 
+    time = data.time
     data = data.drop(columns=["time"])
 
     if validation_set:
@@ -47,7 +50,7 @@ def get_datasets(validation_set=False):
     else:
         X_train, y_train = hp.preprocessing_pipeline(data, N_PAST, N_FUTURE)
 
-    return data, X_train, y_train
+    return time, data, X_train, y_train
 
 
 def main():
@@ -55,19 +58,25 @@ def main():
     training model, and computing predictions."""
 
     print("Getting X_train and y_train...")
-    data, X_train, y_train = get_datasets()
+    time, data, X_train, y_train = get_datasets()
 
+    #regressor = load_model("models/regressor.h5")
     print("Building regressor...")
-    regressor, history = md.train_model(X_train,
-                                        y_train,
-                                        N_PAST,
-                                        optimizer="rmsprop",
-                                        batch_size=64,
-                                        epochs=30)
+    regressor = md.train_model(X_train,
+                               y_train,
+                               N_PAST,
+                               optimizer="rmsprop",
+                               batch_size=64,
+                               epochs=30)
     regressor.save("models/regressor.h5")
 
     print("Getting last {} hours to predict next {} hours...".format(
         N_PAST, N_FUTURE))
+
+    timepred = np.concatenate(
+        (time[-N_PAST:].values,
+         [time.iloc[-1] + (1 + n) * 3600 for n in range(N_FUTURE)]))
+
     last = data.iloc[-N_PAST:, :]
     last = hp.preprocessing_pipeline(last,
                                      N_PAST,
@@ -86,6 +95,12 @@ def main():
     plt.axvline(N_PAST, linestyle=":")
     plt.savefig("prediction.png")
     plt.show()
+
+    pd.DataFrame({
+        "time": timepred,
+        "prediction": prices[:, 0]
+    }).to_csv("prediction.csv")
+
     #prediction = regressor.predict(X_test)[0].reshape(-1, 1)
     #prediction = sc.inverse_transform(prediction)
 

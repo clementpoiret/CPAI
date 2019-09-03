@@ -75,15 +75,15 @@ def train_model(X_train,
 
     tb = TensorBoard('logs')
 
-    history = regressor.fit(X_train,
-                            y_train,
-                            epochs=epochs,
-                            callbacks=[es, rlr, mcp, tb],
-                            verbose=1,
-                            validation_split=validation_split,
-                            batch_size=batch_size)
+    regressor.fit(X_train,
+                  y_train,
+                  epochs=epochs,
+                  callbacks=[es, rlr, mcp, tb],
+                  verbose=1,
+                  validation_split=validation_split,
+                  batch_size=batch_size)
 
-    return regressor, history
+    return regressor
 
 
 def tune(X_train, y_train, parameters, cv=4, n_jobs=-1):

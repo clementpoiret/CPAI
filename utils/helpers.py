@@ -10,8 +10,8 @@ import utils.cryptocurrency.cryptocompare as cc
 import utils.technicalanalysis.indicators as ind
 import joblib
 
-from impyute.imputation.ts import moving_window
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
+from sklearn.decomposition import PCA
 
 
 def impute_ts(X):
@@ -33,19 +33,18 @@ def merge_truncate(historical, social):
     return data
 
 
-def scale(X):
-    sc = MinMaxScaler(feature_range=(0, 1))
-    sc_predict = MinMaxScaler(feature_range=(0, 1))
-
+def scale(X,
+          scaler=MinMaxScaler(feature_range=(0, 1)),
+          save=True,
+          filename="MinMaxScaler"):
+    sc = scaler
     X_scaled = sc.fit_transform(X)
 
-    if not os.path.exists("scalers/"):
-        os.mkdir("scalers/")
+    if save:
+        if not os.path.exists("scalers/"):
+            os.mkdir("scalers/")
 
-    joblib.dump(sc, "scalers/MinMaxScaler.pkl")
-
-    sc_predict.fit(X[:, 0:1])
-    joblib.dump(sc_predict, "scalers/MinMaxScaler_predict.pkl")
+        joblib.dump(sc, "scalers/{}.pkl".format(filename))
 
     return X_scaled
 
@@ -57,23 +56,44 @@ def preprocessing_pipeline(X, n_past, n_future, is_testing_set=False):
             columns_to_drop.append(col)
     preprocessed = X.drop(columns=columns_to_drop)
 
-    # for col in preprocessed.columns:
-    #     if (preprocessed[col] == 0).any():
-    #         preprocessed[col] = impute_ts(X[col])
-
     preprocessed = preprocessed.astype(float)
     preprocessed = preprocessed.values
 
+    close = preprocessed[:, 0]
+    preprocessed = preprocessed[:, 1:]
+
     if is_testing_set:
-        sc = joblib.load("scalers/MinMaxScaler.pkl")
-        preprocessed = sc.transform(preprocessed)
+        #! to update
+        stdsc = joblib.load("scalers/StandardScaler.pkl")
+        pca = joblib.load("scalers/pca.pkl")
+        mmsc = joblib.load("scalers/MinMaxScaler.pkl")
+        mmsc_pred = joblib.load("scalers/MinMaxScaler_predict.pkl")
+
+        preprocessed = stdsc.transform(preprocessed)
+        preprocessed = pca.transform(preprocessed)
+        preprocessed = mmsc.transform(preprocessed)
+
+        close = mmsc_pred.transform(close.reshape(-1, 1))
+        preprocessed = np.concatenate([close, preprocessed], axis=1)
 
         X_test = np.array([preprocessed])
 
         return X_test
 
     else:
+        preprocessed = scale(preprocessed,
+                             scaler=StandardScaler(),
+                             save=True,
+                             filename="StandardScaler")
+
+        pca = PCA(.99)
+        preprocessed = pca.fit_transform(preprocessed)
+        joblib.dump(pca, "scalers/pca.pkl")
+
+        close = scale(close.reshape(-1, 1), filename="MinMaxScaler_predict")
         preprocessed = scale(preprocessed)
+        preprocessed = np.concatenate((close, preprocessed), axis=1)
+
         X_train = [
             preprocessed[i - n_past:i, :]
             for i in range(n_past,
