@@ -2,7 +2,8 @@
 
 
 Artificial Intelligence for CryptoCurrency market trends predictions.
-Current accuracy (5-fold Stratified Cross-Validation): 82%.
+
+Current accuracy (5-fold Stratified Cross-Validation with PCA): 82%.
 
 ## Description
 
@@ -65,6 +66,9 @@ a linear regression over 32 hours. Classes are then defined as:
 
 Here is the resulting prices array with training historical price, and
 the two most probable predictions (bottom left):
+
+*WARNING: Example may not be up-to-dat in regard to the model while I'm
+tunning it with k-fold crossvalidation.*
 
 ![prediction](prediction.png)
 
