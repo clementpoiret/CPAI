@@ -6,88 +6,99 @@ is subject to a lot of changes"""
 # Importing libraries
 import os
 
+import numpy as np
+from keras.callbacks import (EarlyStopping, ModelCheckpoint, ReduceLROnPlateau,
+                             TensorBoard)
+from keras.layers import Activation, CuDNNGRU, CuDNNLSTM, Dense, Dropout, PReLU
 from keras.models import Sequential
-from keras.layers import Dense, CuDNNLSTM, CuDNNGRU, Dropout, Activation, PReLU
-from keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint, TensorBoard
 from keras.utils import plot_model
-from keras.wrappers.scikit_learn import KerasRegressor
-from sklearn.model_selection import GridSearchCV
+from keras.utils.generic_utils import get_custom_objects
+from keras.wrappers.scikit_learn import KerasClassifier
+from sklearn.metrics import confusion_matrix
+from sklearn.model_selection import (GridSearchCV, StratifiedKFold,
+                                     cross_val_score)
 
 
-def build_regressor(n_past, n_features, optimizer="rmsprop"):
-    regressor = Sequential()
+def build_classifier(n_past, n_features, optimizer="rmsprop"):
+    classifier = Sequential()
 
-    regressor.add(
-        CuDNNGRU(units=256,
+    #get_custom_objects().update({"gelu": Activation(gelu)})
+
+    classifier.add(
+        CuDNNGRU(units=128,
                  return_sequences=True,
                  input_shape=(n_past, n_features)))
-    regressor.add(PReLU(alpha_initializer="zeros"))
+    #regressor.add(Activation(gelu))
+    classifier.add(PReLU(alpha_initializer="zeros"))
     #regressor.add(Dropout(rate=.55))
 
-    regressor.add(CuDNNGRU(units=128, return_sequences=True))
-    regressor.add(PReLU(alpha_initializer="zeros"))
+    classifier.add(CuDNNGRU(units=64, return_sequences=True))
+    #regressor.add(Activation(gelu))
+    classifier.add(PReLU(alpha_initializer="zeros"))
     #regressor.add(Dropout(rate=.55))
 
-    regressor.add(CuDNNGRU(units=64, return_sequences=True))
-    regressor.add(PReLU(alpha_initializer="zeros"))
+    classifier.add(CuDNNGRU(units=32, return_sequences=True))
+    #regressor.add(Activation(gelu))
+    classifier.add(PReLU(alpha_initializer="zeros"))
     #regressor.add(Dropout(rate=.55))
 
-    regressor.add(CuDNNGRU(units=32))
-    regressor.add(PReLU(alpha_initializer="zeros"))
+    classifier.add(CuDNNGRU(units=32))
+    #regressor.add(Activation(gelu))
+    classifier.add(PReLU(alpha_initializer="zeros"))
     #regressor.add(Dropout(rate=.55))
 
-    regressor.add(Dense(units=32, activation="sigmoid"))
+    #regressor.add(Dense(units=32, activation="sigmoid"))
 
-    regressor.compile(optimizer=optimizer, loss="mean_squared_error")
+    classifier.add(Dense(units=5, activation="softmax"))
 
-    plot_model(regressor, to_file="model.png")
+    classifier.compile(optimizer=optimizer,
+                       loss="sparse_categorical_crossentropy",
+                       metrics=['sparse_categorical_accuracy'])
 
-    return regressor
+    plot_model(classifier, to_file="model.png")
+
+    return classifier
 
 
 def train_model(X_train,
                 y_train,
                 n_past,
                 optimizer="rmsprop",
-                batch_size=64,
                 validation_split=.2,
+                shuffle=False,
+                batch_size=64,
                 epochs=128):
-    regressor = build_regressor(n_past, X_train.shape[2], optimizer=optimizer)
+
+    classifier = build_classifier(n_past, X_train.shape[2], optimizer=optimizer)
 
     if not os.path.exists("models/"):
         os.mkdir("models/")
 
-    es = EarlyStopping(monitor='val_loss',
-                       min_delta=1e-10,
-                       patience=10,
-                       verbose=1)
+    es = EarlyStopping(monitor='loss', min_delta=1e-10, patience=10, verbose=1)
 
-    rlr = ReduceLROnPlateau(monitor='val_loss',
-                            factor=0.5,
-                            patience=5,
-                            verbose=1)
+    rlr = ReduceLROnPlateau(monitor='loss', factor=0.5, patience=5, verbose=1)
 
     mcp = ModelCheckpoint(filepath='models/weights.h5',
-                          monitor='val_loss',
+                          monitor='loss',
                           verbose=1,
                           save_best_only=True,
                           save_weights_only=True)
 
     tb = TensorBoard('logs')
 
-    regressor.fit(X_train,
-                  y_train,
-                  epochs=epochs,
-                  callbacks=[es, rlr, mcp, tb],
-                  verbose=1,
-                  validation_split=validation_split,
-                  batch_size=batch_size)
+    classifier.fit(X_train,
+                   y_train,
+                   epochs=epochs,
+                   callbacks=[es, rlr, mcp, tb],
+                   verbose=1,
+                   shuffle=shuffle,
+                   batch_size=batch_size)
 
-    return regressor
+    return classifier
 
 
 def tune(X_train, y_train, parameters, cv=4, n_jobs=-1):
-    estimator = KerasRegressor(build_fn=build_regressor)
+    estimator = KerasClassifier(build_fn=build_classifier)
 
     grid_search = GridSearchCV(estimator=estimator,
                                param_grid=parameters,
@@ -101,3 +112,45 @@ def tune(X_train, y_train, parameters, cv=4, n_jobs=-1):
     best_accuracy = grid_search.best_score_
 
     return best_parameters, best_accuracy
+
+
+def cv(X, y, n_past, batch_size=64, epochs=50, n_splits=5):
+
+    skf = StratifiedKFold(n_splits=5, shuffle=True)
+    skf.get_n_splits(X, y)
+
+    accuracies = []
+    overall = [0]
+
+    for train_index, test_index in skf.split(X, y):
+        classifier = None
+
+        print("TRAIN:", train_index, "TEST:", test_index)
+
+        X_train, X_test = X[train_index], X[test_index]
+        y_train, y_test = y[train_index], y[test_index]
+
+        classifier = train_model(X_train,
+                                 y_train,
+                                 n_past,
+                                 optimizer="rmsprop",
+                                 shuffle=True,
+                                 batch_size=batch_size,
+                                 epochs=epochs)
+
+        y_pred = classifier.predict(X_test)
+        y_pred = np.array([np.argmax(y) for y in y_pred]).reshape(-1, 1)
+
+        cm = confusion_matrix(y_test, y_pred)
+
+        accuracies.append(cm)
+
+        acc = np.trace(cm) / cm.sum()
+
+        print("Accuracy: {}%".format(acc))
+
+        overall = [acc if overall[0] == 0 else (overall[0] + acc) / 2]
+
+        print("Overall accuracy: {}%".format(overall))
+
+    return accuracies

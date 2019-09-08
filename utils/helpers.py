@@ -4,14 +4,113 @@ such as an imputer to deal with missing values"""
 
 # Importing libraries
 import os
+
+import joblib
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import xgboost as xgb
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
+from sklearn.linear_model import LinearRegression
+
 import utils.cryptocurrency.cryptocompare as cc
 import utils.technicalanalysis.indicators as ind
-import joblib
 
-from sklearn.preprocessing import MinMaxScaler, StandardScaler
-from sklearn.decomposition import PCA
+
+def split(X, testcol="close", limit=32):
+    data_train = X.iloc[:len(X) - limit, :]
+    y_test = X.iloc[len(X) - limit:, X.columns.get_loc("close")]
+
+    return data_train, y_test
+
+
+def get_data(main="ETH", secondary="BTC"):
+    # TODO: Change hardcoded parameters (ie. BTC/ETH)
+    print("Getting data...")
+
+    historical_main = cc.get_historical_data(fsym=main)
+    historical_main = impute_ts(historical_main)
+
+    historical_secondary = cc.get_historical_data(fsym=secondary)
+    historical_secondary = impute_ts(historical_secondary)
+
+    social = cc.get_social_data()
+
+    print("Computing indicators...")
+    print("Computing Ichimoku Kinko Hyo...")
+    ichimoku = ind.ichimoku(historical_main, shift=0)
+
+    print("Computing MACD...")
+    macd = ind.MACD(historical_main)
+
+    print("Computing bollinger bands...")
+    bbands = ind.bollinger(historical_main)
+
+    print("Computing fourier transformations at 3, 6, 9 and 100 components...")
+    fourier = ind.fourier(historical_main)
+
+    print("Computing stochastic rsi...")
+    s_rsi = ind.stochastic_rsi(historical_main)
+
+    print("Computing ADX...")
+    adx = ind.ADX(historical_main)
+
+    historical_secondary.columns = [
+        s + "_{}".format(secondary.lower()) if s != "time" else s
+        for s in historical_secondary.columns
+    ]
+
+    data = pd.merge(historical_main, historical_secondary, on="time").merge(
+        ichimoku,
+        on="time").merge(macd, on="time").merge(bbands, on="time").merge(
+            fourier, on="time").merge(s_rsi, on="time").merge(adx, on="time")
+
+    print("Merging data on seconds from epoch...")
+    data = merge_truncate(data, social)
+
+    return data
+
+
+def features_selection(data):
+
+    def get_feature_importance_data(data_income):
+        data = data_income.copy()
+        y = data['close']
+        X = data.iloc[:, 12:]
+
+        train_samples = int(X.shape[0] * 0.65)
+
+        X_train = X.iloc[:train_samples]
+        X_test = X.iloc[train_samples:]
+
+        y_train = y.iloc[:train_samples]
+        y_test = y.iloc[train_samples:]
+
+        return (X_train, y_train), (X_test, y_test)
+
+    (X_train_FI, y_train_FI), (X_test_FI,
+                               y_test_FI) = get_feature_importance_data(data)
+
+    regressor = xgb.XGBRegressor(gamma=0.0,
+                                 n_estimators=150,
+                                 base_score=0.7,
+                                 colsample_bytree=1,
+                                 learning_rate=0.05)
+
+    xgbModel = regressor.fit(X_train_FI,y_train_FI, \
+                            eval_set = [(X_train_FI, y_train_FI), (X_test_FI, y_test_FI)], \
+                            verbose=False)
+
+    eval_result = regressor.evals_result()
+
+    fig = plt.figure(figsize=(8, 8))
+    plt.xticks(rotation='vertical')
+    plt.bar([i for i in range(len(xgbModel.feature_importances_))],
+            xgbModel.feature_importances_.tolist(),
+            tick_label=X_test_FI.columns)
+    plt.title('Figure 6: Feature importance of the technical indicators.')
+    plt.show()
 
 
 def impute_ts(X):
@@ -49,7 +148,27 @@ def scale(X,
     return X_scaled
 
 
-def preprocessing_pipeline(X, n_past, n_future, is_testing_set=False):
+def reg(y, return_values=False):
+    ind = np.array([x for x in range(32)]).reshape(-1, 1)
+
+    lin_reg = LinearRegression()
+    lin_reg.fit(ind, y)
+
+    if return_values:
+        y_pred = lin_reg.predict(ind)
+        return lin_reg.coef_, y_pred
+
+    else:
+        return lin_reg.coef_
+
+
+def preprocessing_pipeline(X,
+                           n_past,
+                           n_future,
+                           is_testing_set=False,
+                           low_trigger=.7,
+                           high_trigger=2):
+
     columns_to_drop = []
     for col in X.columns:
         if X[col].isnull().all():
@@ -105,60 +224,44 @@ def preprocessing_pipeline(X, n_past, n_future, is_testing_set=False):
                            len(preprocessed) - n_future)
         ]
 
-        X_train, y_train = np.array(X_train), np.array(y_train)
+        print("Computing coefficients for y_train...")
+        y_train = [reg(y) for y in y_train]
 
+        σ = np.std(y_train)
+        mean = np.mean(y_train)
+        u = mean + low_trigger * σ
+        l = mean - low_trigger * σ
+        u2 = mean + high_trigger * σ
+        l2 = mean - high_trigger * σ
+
+        # 0 for ultralow, 1 for low, 2 for range, 3 for high, 4 for ultrahigh
+        y_train = [
+            0 if y <= l2 else 1 if y <= l and y > l2 else
+            3 if y >= u and y < u2 else 4 if y >= u2 else 2 for y in y_train
+        ]
+
+        X_train, y_train = np.array(X_train), np.array(y_train).reshape(-1, 1)
+
+        # Range : (mean-std, mean+std)
         return X_train, y_train
 
 
-def get_data(main="ETH", secondary="BTC"):
-    # TODO: Change hardcoded parameters (ie. BTC/ETH)
-    print("Getting data...")
+def get_category(category):
+    label = ""
 
-    historical_main = cc.get_historical_data(fsym=main)
-    historical_main = impute_ts(historical_main)
+    if category == 0:
+        label = "Very Downward Trend"
 
-    historical_secondary = cc.get_historical_data(fsym=secondary)
-    historical_secondary = impute_ts(historical_secondary)
+    elif category == 1:
+        label = "Downward Trend"
 
-    social = cc.get_social_data()
+    elif category == 2:
+        label = "Range"
 
-    print("Computing indicators...")
-    print("Computing Ichimoku Kinko Hyo...")
-    ichimoku = ind.ichimoku(historical_main, shift=0)
+    elif category == 3:
+        label = "Upward Trend"
 
-    print("Computing MACD...")
-    macd = ind.MACD(historical_main)
+    elif category == 4:
+        label = "Very Upward Trend"
 
-    print("Computing bollinger bands...")
-    bbands = ind.bollinger(historical_main)
-
-    print("Computing fourier transformations at 3, 6, 9 and 100 components...")
-    fourier = ind.fourier(historical_main)
-
-    print("Computing stochastic rsi...")
-    s_rsi = ind.stochastic_rsi(historical_main)
-
-    print("Computing ADX...")
-    adx = ind.ADX(historical_main)
-
-    historical_secondary.columns = [
-        s + "_{}".format(secondary.lower()) if s != "time" else s
-        for s in historical_secondary.columns
-    ]
-
-    data = pd.merge(historical_main, historical_secondary, on="time").merge(
-        ichimoku,
-        on="time").merge(macd, on="time").merge(bbands, on="time").merge(
-            fourier, on="time").merge(s_rsi, on="time").merge(adx, on="time")
-
-    print("Merging data on seconds from epoch...")
-    data = merge_truncate(data, social)
-
-    return data
-
-
-def split(X, testcol="close", limit=32):
-    data_train = X.iloc[:len(X) - limit, :]
-    y_test = X.iloc[len(X) - limit:, X.columns.get_loc("close")]
-
-    return data_train, y_test
+    return label

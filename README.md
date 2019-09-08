@@ -1,8 +1,8 @@
 # CPAI
 
 
-Artificial Intelligence for CryptoCurrency market prices predictions.
-
+Artificial Intelligence for CryptoCurrency market trends predictions.
+Current accuracy (5-fold Stratified Cross-Validation): 82%.
 
 ## Description
 
@@ -36,25 +36,39 @@ giving .99 of explained variance are kept. Let x be the number of components.
 
 ### Model
 
-Currently used model is pretty basic. It's a stacked LSTM model taking
+Currently used model is pretty basic. It's a stacked GRU model taking
 an input of shape (2048, x).
 
-There are 4 Gated Recurrent Units (GRU) layers of 256, 128, 64 and 32
+There are 4 Gated Recurrent Units (GRU) layers of 128, 64, 32 and 32
 neurons each, with a parametric relu activation function connected 
-to a Dense layer (output layer) of 32 neurons with a sigmoid activation
+to a Dense layer (output layer) of 5 neurons with a softmax activation
 function.
 
-As of now, the regressor is using a classical mean squared error loss
-function, with a rmsprop optimizer, a batch size of 32 and 128 epochs.
+As of now, the classifier is using a classical Sparse Categorical 
+Crossentropy loss function with Sparse Categorical Accuracy as metric,
+with a rmsprop optimizer, a batch size of 64 and 64 epochs.
+
+**The model is now a Classifier to reduce model complexity.**
+
+The main goal changed: we do not try to predict future prices, but the
+overall trend for the next hours. To do so, y_train is the slope of 
+a linear regression over 32 hours. Classes are then defined as:
+- 0, Very decreasing trend with slope <= mean(slopes)-a*std(slopes),
+- 1, Decreasing trend with slope <= mean(slopes)-b*std(slopes),
+- 2, Range with slope between mean(slopes) +/- c(std(slopes)),
+- 3, Increasing trend with slope >= mean(slopes)+b*std(slopes),
+- 4, Very Increasing trend with slope >= mean(slopes)+a*stp(slopes).
 
 ![model](model.png)
 
 *The model needs hyperparameters tuning.*
 
-Here is the resulting prices array with historical price (left), and
-prediction (right):
+Here is the resulting prices array with training historical price, and
+the two most probable predictions (bottom left):
 
 ![prediction](prediction.png)
+
+## Next step
 
 ## Note
 
@@ -65,3 +79,6 @@ working,
 - History is heavily limited by the quantity of social data, but this is
 related to CryptoCompare's API,
 - PCA is linear, why not using KernelPCA or Autoencoders?
+
+## Used libraries
+
