@@ -13,8 +13,11 @@ import xgboost as xgb
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from sklearn.linear_model import LinearRegression
+from keras.models import Model
+from keras.models import load_model
 
 import utils.cryptocurrency.cryptocompare as cc
+import utils.neuralnet.model as md
 import utils.technicalanalysis.indicators as ind
 
 
@@ -72,12 +75,12 @@ def get_data(main="ETH", secondary="BTC"):
     return data
 
 
-def features_selection(data):
+def features_selection(data, threshold=.01, plot=True):
 
     def get_feature_importance_data(data_income):
         data = data_income.copy()
         y = data['close']
-        X = data.iloc[:, 12:]
+        X = data.iloc[:, 1:]
 
         train_samples = int(X.shape[0] * 0.65)
 
@@ -102,15 +105,21 @@ def features_selection(data):
                             eval_set = [(X_train_FI, y_train_FI), (X_test_FI, y_test_FI)], \
                             verbose=False)
 
-    eval_result = regressor.evals_result()
+    features = [i for i in range(len(xgbModel.feature_importances_))]
+    labels = X_test_FI.columns
+    values = np.array(xgbModel.feature_importances_.tolist())
 
-    fig = plt.figure(figsize=(8, 8))
-    plt.xticks(rotation='vertical')
-    plt.bar([i for i in range(len(xgbModel.feature_importances_))],
-            xgbModel.feature_importances_.tolist(),
-            tick_label=X_test_FI.columns)
-    plt.title('Figure 6: Feature importance of the technical indicators.')
-    plt.show()
+    selection = labels[values > threshold]
+
+    if plot:
+        fig = plt.figure(figsize=(8, 8))
+        plt.xticks(rotation='vertical')
+        plt.bar(features, values, tick_label=labels)
+        plt.title('Figure 6: Feature importance of the technical indicators.')
+        plt.save("features.png")
+        plt.show()
+
+    return [data.columns.get_loc(col) for col in selection]
 
 
 def impute_ts(X):
@@ -183,17 +192,27 @@ def preprocessing_pipeline(X,
 
     if is_testing_set:
         #! to update
-        stdsc = joblib.load("scalers/StandardScaler.pkl")
-        pca = joblib.load("scalers/pca.pkl")
-        mmsc = joblib.load("scalers/MinMaxScaler.pkl")
-        mmsc_pred = joblib.load("scalers/MinMaxScaler_predict.pkl")
 
-        preprocessed = stdsc.transform(preprocessed)
-        preprocessed = pca.transform(preprocessed)
-        preprocessed = mmsc.transform(preprocessed)
+        #stdsc = joblib.load("scalers/StandardScaler.pkl")
+        #pca = joblib.load("scalers/pca.pkl")
+        mmsc_in = joblib.load("scalers/MinMaxScaler_encoder.pkl")
+        mmsc_out = joblib.load("scalers/MinMaxScaler.pkl")
+        mmsc_pred = joblib.load("scalers/MinMaxScaler_predict.pkl")
+        m = load_model("models/autoencoder.h5")
+        encoder = Model(m.input, m.get_layer('bottleneck').output)
+
+        preprocessed = np.array(preprocessed)
+
+        preprocessed = mmsc_in.transform(preprocessed)
+        encoded = encoder.predict(preprocessed)
+        encoded = mmsc_out.transform(encoded)
+
+        #preprocessed = stdsc.transform(preprocessed)
+        #preprocessed = pca.transform(preprocessed)
+        #preprocessed = mmsc.transform(preprocessed)
 
         close = mmsc_pred.transform(close.reshape(-1, 1))
-        preprocessed = np.concatenate([close, preprocessed], axis=1)
+        preprocessed = np.concatenate([close, encoded], axis=1)
 
         X_test = np.array([preprocessed])
 
@@ -201,17 +220,29 @@ def preprocessing_pipeline(X,
 
     else:
         preprocessed = scale(preprocessed,
-                             scaler=StandardScaler(),
+                             scaler=MinMaxScaler(),
                              save=True,
-                             filename="StandardScaler")
+                             filename="MinMaxScaler_encoder")
 
-        pca = PCA(.99)
-        preprocessed = pca.fit_transform(preprocessed)
-        joblib.dump(pca, "scalers/pca.pkl")
+        #pca = PCA(.99)
+        #preprocessed = pca.fit_transform(preprocessed)
+        #joblib.dump(pca, "scalers/pca.pkl")
+        preprocessed = np.array(preprocessed)
+        m = md.build_autoencoder(preprocessed.shape[1], optimizer="adam")
+
+        m.fit(preprocessed, preprocessed, batch_size=128, epochs=32, verbose=1)
+        m.save("models/autoencoder.h5")
+
+        encoder = Model(m.input, m.get_layer('bottleneck').output)
+        encoder.save("models/encoder.h5")
+
+        encoded = encoder.predict(preprocessed)
+        encoded = scale(encoded)
 
         close = scale(close.reshape(-1, 1), filename="MinMaxScaler_predict")
-        preprocessed = scale(preprocessed)
-        preprocessed = np.concatenate((close, preprocessed), axis=1)
+
+        #preprocessed = scale(preprocessed)
+        preprocessed = np.concatenate((close, encoded), axis=1)
 
         X_train = [
             preprocessed[i - n_past:i, :]

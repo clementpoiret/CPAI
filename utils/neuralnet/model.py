@@ -7,6 +7,8 @@ is subject to a lot of changes"""
 import os
 
 import numpy as np
+import tensorflow as tf
+
 from keras.callbacks import (EarlyStopping, ModelCheckpoint, ReduceLROnPlateau,
                              TensorBoard)
 from keras.layers import Activation, CuDNNGRU, CuDNNLSTM, Dense, Dropout, PReLU
@@ -17,6 +19,20 @@ from keras.wrappers.scikit_learn import KerasClassifier
 from sklearn.metrics import confusion_matrix
 from sklearn.model_selection import (GridSearchCV, StratifiedKFold,
                                      cross_val_score)
+
+
+def gelu(x):
+    """Gaussian Error Linear Unit.
+    This is a smoother version of the RELU.
+    Original paper: https://arxiv.org/abs/1606.08415
+    Args:
+        x: float Tensor to perform activation.
+    Returns:
+        `x` with the GELU activation applied.
+    """
+    cdf = 0.5 * (1.0 + tf.tanh(
+        (np.sqrt(2 / np.pi) * (x + 0.044715 * tf.pow(x, 3)))))
+    return x * cdf
 
 
 def build_classifier(n_past, n_features, optimizer="rmsprop"):
@@ -58,6 +74,32 @@ def build_classifier(n_past, n_features, optimizer="rmsprop"):
     plot_model(classifier, to_file="model.png")
 
     return classifier
+
+
+from keras.utils.generic_utils import get_custom_objects
+
+
+def build_autoencoder(n_features, code=16, optimizer="rmsprop"):
+
+    get_custom_objects().update({'gelu': Activation(gelu)})
+
+    autoencoder = Sequential()
+
+    autoencoder.add(Dense(64, activation=gelu, input_shape=(n_features,)))
+
+    autoencoder.add(Dense(32, activation=gelu))
+
+    autoencoder.add(Dense(code, activation='linear', name="bottleneck"))
+
+    autoencoder.add(Dense(32, activation=gelu))
+
+    autoencoder.add(Dense(64, activation=gelu))
+
+    autoencoder.add(Dense(n_features, activation='sigmoid'))
+
+    autoencoder.compile(loss='mean_squared_error', optimizer=optimizer)
+
+    return autoencoder
 
 
 def train_model(X_train,
@@ -151,6 +193,6 @@ def cv(X, y, n_past, batch_size=64, epochs=50, n_splits=5):
 
         overall = [acc if overall[0] == 0 else (overall[0] + acc) / 2]
 
-        print("Overall accuracy: {}%".format(overall))
+        print("Overall accuracy: {}%".format(overall * 100))
 
-    return accuracies
+    return np.array(accuracies)

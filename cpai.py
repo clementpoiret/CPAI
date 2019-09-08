@@ -64,14 +64,14 @@ def main():
     training model, and computing predictions."""
 
     print("Getting X_train and y_train...")
-    time, data, X_train, y_train, y_test = get_datasets(validation_set=True)
+    time, data, X_train, y_train, y_test = get_datasets(validation_set=1)
 
     #classifier = load_model("models/classifier.h5")
     accuracies = md.cv(X_train,
                        y_train,
                        n_past=N_PAST,
                        batch_size=64,
-                       epochs=64,
+                       epochs=60,
                        n_splits=5)
 
     np.save("accuracies", accuracies)
@@ -82,8 +82,8 @@ def main():
                                 N_PAST,
                                 optimizer="rmsprop",
                                 shuffle=True,
-                                batch_size=64,
-                                epochs=65)
+                                batch_size=128,
+                                epochs=64)
     classifier.save("models/classifier.h5")
 
     print("Getting last {} hours to predict next {} hours...".format(
