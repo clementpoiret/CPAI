@@ -32,7 +32,7 @@ import utils.neuralnet.model as md
 # Global variables
 N_FUTURE = 32
 N_PAST = 2048
-LOW_TRIGGER = .19
+LOW_TRIGGER = .17
 HIGH_TRIGGER = 1
 
 
@@ -83,7 +83,7 @@ def main():
                                 optimizer="rmsprop",
                                 shuffle=True,
                                 batch_size=128,
-                                epochs=64)
+                                epochs=100)
     classifier.save("models/classifier.h5")
 
     print("Getting last {} hours to predict next {} hours...".format(

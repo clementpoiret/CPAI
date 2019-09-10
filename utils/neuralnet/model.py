@@ -193,6 +193,6 @@ def cv(X, y, n_past, batch_size=64, epochs=50, n_splits=5):
 
         overall = [acc if overall[0] == 0 else (overall[0] + acc) / 2]
 
-        print("Overall accuracy: {}%".format(overall * 100))
+        print("Overall accuracy: {}%".format(overall[0] * 100))
 
     return np.array(accuracies)

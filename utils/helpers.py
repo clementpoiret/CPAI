@@ -11,6 +11,7 @@ import numpy as np
 import pandas as pd
 import xgboost as xgb
 from sklearn.decomposition import PCA
+from sklearn.manifold import TSNE
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from sklearn.linear_model import LinearRegression
 from keras.models import Model
@@ -188,82 +189,57 @@ def preprocessing_pipeline(X,
     preprocessed = preprocessed.values
 
     close = preprocessed[:, 0]
-    preprocessed = preprocessed[:, 1:]
+    highlow = scale(preprocessed[:, 1:3], save=False)
+
+    preprocessed = preprocessed[:, 3:]
 
     if is_testing_set:
         #! to update
 
         #stdsc = joblib.load("scalers/StandardScaler.pkl")
-        #pca = joblib.load("scalers/pca.pkl")
-        mmsc_in = joblib.load("scalers/MinMaxScaler_encoder.pkl")
+        pca = joblib.load("scalers/pca.pkl")
+        stdsc_in = joblib.load("scalers/StandardScaler.pkl")
         mmsc_out = joblib.load("scalers/MinMaxScaler.pkl")
         mmsc_pred = joblib.load("scalers/MinMaxScaler_predict.pkl")
-        m = load_model("models/autoencoder.h5")
-        encoder = Model(m.input, m.get_layer('bottleneck').output)
+        #tsne = joblib.load("scalers/tsne.pkl")
+        #m = load_model("models/autoencoder.h5")
+        #encoder = Model(m.input, m.get_layer('bottleneck').output)
 
-        preprocessed = np.array(preprocessed)
+        #preprocessed = np.array(preprocessed)
 
-        preprocessed = mmsc_in.transform(preprocessed)
-        encoded = encoder.predict(preprocessed)
-        encoded = mmsc_out.transform(encoded)
+        preprocessed = stdsc_in.transform(preprocessed)
+        preprocessed = pca.transform(preprocessed)
+        preprocessed = mmsc_out.transform(preprocessed)
+
+        #encoded = encoder.predict(preprocessed)
+        #encoded = mmsc_out.transform(encoded)
 
         #preprocessed = stdsc.transform(preprocessed)
         #preprocessed = pca.transform(preprocessed)
         #preprocessed = mmsc.transform(preprocessed)
 
         close = mmsc_pred.transform(close.reshape(-1, 1))
-        preprocessed = np.concatenate([close, encoded], axis=1)
+        preprocessed = np.concatenate([close, highlow, preprocessed], axis=1)
 
         X_test = np.array([preprocessed])
 
         return X_test
 
     else:
-        preprocessed = scale(preprocessed,
-                             scaler=MinMaxScaler(),
-                             save=True,
-                             filename="MinMaxScaler_encoder")
-
-        #pca = PCA(.99)
-        #preprocessed = pca.fit_transform(preprocessed)
-        #joblib.dump(pca, "scalers/pca.pkl")
-        preprocessed = np.array(preprocessed)
-        m = md.build_autoencoder(preprocessed.shape[1], optimizer="adam")
-
-        m.fit(preprocessed, preprocessed, batch_size=128, epochs=32, verbose=1)
-        m.save("models/autoencoder.h5")
-
-        encoder = Model(m.input, m.get_layer('bottleneck').output)
-        encoder.save("models/encoder.h5")
-
-        encoded = encoder.predict(preprocessed)
-        encoded = scale(encoded)
-
-        close = scale(close.reshape(-1, 1), filename="MinMaxScaler_predict")
-
-        #preprocessed = scale(preprocessed)
-        preprocessed = np.concatenate((close, encoded), axis=1)
-
-        X_train = [
-            preprocessed[i - n_past:i, :]
-            for i in range(n_past,
-                           len(preprocessed) - n_future)
-        ]
         y_train = [
-            preprocessed[i:i + n_future, 0]
-            for i in range(n_past,
-                           len(preprocessed) - n_future)
+            close[i:i + n_future] for i in range(n_past,
+                                                 len(close) - n_future)
         ]
 
         print("Computing coefficients for y_train...")
         y_train = [reg(y) for y in y_train]
 
         σ = np.std(y_train)
-        mean = np.mean(y_train)
-        u = mean + low_trigger * σ
-        l = mean - low_trigger * σ
-        u2 = mean + high_trigger * σ
-        l2 = mean - high_trigger * σ
+        #mean = np.mean(y_train)
+        u = 0 + low_trigger * σ
+        l = 0 - low_trigger * σ
+        u2 = 0 + high_trigger * σ
+        l2 = 0 - high_trigger * σ
 
         # 0 for ultralow, 1 for low, 2 for range, 3 for high, 4 for ultrahigh
         y_train = [
@@ -271,9 +247,50 @@ def preprocessing_pipeline(X,
             3 if y >= u and y < u2 else 4 if y >= u2 else 2 for y in y_train
         ]
 
+        preprocessed = scale(preprocessed,
+                             scaler=StandardScaler(),
+                             save=True,
+                             filename="StandardScaler")
+
+        #tsne = TSNE(n_components=3,
+        #            learning_rate=300,
+        #            perplexity=30,
+        #            early_exaggeration=12,
+        #            init="pca")
+        #preprocessed = tsne.fit_transform(preprocessed)
+        #joblib.dump(tsne, "scalers/tsne.pkl")
+
+        print("Dimensionality Reduction...")
+        pca = PCA(.95)
+        preprocessed = pca.fit_transform(preprocessed)
+        joblib.dump(pca, "scalers/pca.pkl")
+        preprocessed = scale(preprocessed)
+
+        #preprocessed = np.array(preprocessed)
+        #m = md.build_autoencoder(preprocessed.shape[1], optimizer="adam")
+
+        #m.fit(preprocessed, preprocessed, batch_size=128, epochs=32, verbose=1)
+        #m.save("models/autoencoder.h5")
+
+        #encoder = Model(m.input, m.get_layer('bottleneck').output)
+        #encoder.save("models/encoder.h5")
+
+        #encoded = encoder.predict(preprocessed)
+        #encoded = scale(encoded)
+
+        close = scale(close.reshape(-1, 1), filename="MinMaxScaler_predict")
+
+        #preprocessed = scale(preprocessed)
+        preprocessed = np.concatenate((close, highlow, preprocessed), axis=1)
+
+        X_train = [
+            preprocessed[i - n_past:i, :]
+            for i in range(n_past,
+                           len(preprocessed) - n_future)
+        ]
+
         X_train, y_train = np.array(X_train), np.array(y_train).reshape(-1, 1)
 
-        # Range : (mean-std, mean+std)
         return X_train, y_train
 
 
